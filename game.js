@@ -5,6 +5,7 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 class ArrowInput {
   static keys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"];
   pressed = new Set();
+  touchDirections = new Map();
 
   constructor(onDash, onPause) {
     for (const type of ["keydown", "keyup"]) {
@@ -22,14 +23,101 @@ class ArrowInput {
         else this.pressed.delete(event.key);
       });
     }
-    window.addEventListener("blur", () => this.pressed.clear());
+    window.addEventListener("blur", () => {
+      this.pressed.clear();
+      this.clearTouch();
+    });
+  }
+
+  clearTouch() {
+    for (const button of this.touchDirections.values()) button.removeAttribute("data-held");
+    this.touchDirections.clear();
+  }
+
+  setTouchDirection(id, button) {
+    const previous = this.touchDirections.get(id);
+    this.touchDirections.delete(id);
+    if (previous && ![...this.touchDirections.values()].includes(previous)) {
+      previous.removeAttribute("data-held");
+    }
+    if (button) {
+      this.touchDirections.set(id, button);
+      button.setAttribute("data-held", "");
+    }
   }
 
   direction() {
-    const x = Number(this.pressed.has("ArrowRight")) - Number(this.pressed.has("ArrowLeft"));
-    const y = Number(this.pressed.has("ArrowDown")) - Number(this.pressed.has("ArrowUp"));
+    let x = Number(this.pressed.has("ArrowRight")) - Number(this.pressed.has("ArrowLeft"));
+    let y = Number(this.pressed.has("ArrowDown")) - Number(this.pressed.has("ArrowUp"));
+    for (const button of new Set(this.touchDirections.values())) {
+      const [dx, dy] = button.dataset.direction.split(",").map(Number);
+      x += dx;
+      y += dy;
+    }
+    x = Math.sign(x);
+    y = Math.sign(y);
     const length = Math.hypot(x, y) || 1;
     return { x: x / length, y: y / length };
+  }
+}
+
+class MobileControls {
+  static enabled(navigator) {
+    return navigator.userAgentData?.mobile === true ||
+      /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  }
+
+  constructor(game) {
+    this.input = game.input;
+    this.portrait = window.matchMedia("(orientation: portrait)");
+    this.menu = document.querySelector("#menu");
+    this.dashButton = document.querySelector("#touch-dash");
+    const pad = document.querySelector("#direction-pad");
+    const buttonAt = element => {
+      const button = element?.closest("button[data-direction]");
+      return pad.contains(button) ? button : null;
+    };
+
+    pad.addEventListener("pointerdown", event => {
+      const button = buttonAt(event.target);
+      if (!button || game.paused || this.portrait.matches) return;
+      event.preventDefault();
+      pad.setPointerCapture(event.pointerId);
+      this.input.setTouchDirection(event.pointerId, button);
+    });
+    pad.addEventListener("pointermove", event => {
+      if (!this.input.touchDirections.has(event.pointerId) && !pad.hasPointerCapture(event.pointerId)) return;
+      if (game.paused || this.portrait.matches) return;
+      const target = document.elementFromPoint(event.clientX, event.clientY);
+      this.input.setTouchDirection(event.pointerId, buttonAt(target));
+    });
+    for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) {
+      pad.addEventListener(type, event => this.input.setTouchDirection(event.pointerId, null));
+    }
+    this.dashButton.addEventListener("pointerdown", event => {
+      if (this.dashButton.disabled) return;
+      event.preventDefault();
+      game.dash();
+    });
+    this.dashButton.addEventListener("click", event => {
+      if (event.detail === 0) game.dash();
+    });
+    this.menu.addEventListener("click", () => game.togglePause());
+    document.querySelector("#resume").addEventListener("click", () => {
+      game.togglePause();
+      this.menu.focus();
+    });
+    this.portrait.addEventListener("change", () => {
+      this.input.clearTouch();
+      game.resize();
+    });
+  }
+
+  update(paused, dashes) {
+    this.menu.setAttribute("aria-expanded", String(paused));
+    this.menu.setAttribute("aria-label", paused ? "Resume game" : "Pause and show instructions");
+    this.dashButton.disabled = paused || dashes === 0;
   }
 }
 
@@ -400,7 +488,7 @@ class Obstacle {
 }
 
 class CircleRun {
-  constructor(canvas, score, level, dashCounter, pauseStatus) {
+  constructor(canvas, score, level, dashCounter, pauseStatus, mobile = false) {
     this.canvas = canvas;
     this.context = canvas.getContext("2d");
     this.score = score;
@@ -409,6 +497,7 @@ class CircleRun {
     this.pauseStatus = pauseStatus;
     this.paused = false;
     this.input = new ArrowInput(() => this.dash(), () => this.togglePause());
+    if (mobile) this.mobileControls = new MobileControls(this);
     this.store = new ProgressStore();
     this.progress = this.store.load();
     this.loadLayout();
@@ -425,6 +514,7 @@ class CircleRun {
   }
 
   resize() {
+    if (this.bounds && this.mobileControls?.portrait.matches) return;
     const { width, height } = this.canvas.getBoundingClientRect();
     const scale = window.devicePixelRatio || 1;
     if (this.bounds?.width === width && this.bounds?.height === height && this.scale === scale) return;
@@ -487,15 +577,18 @@ class CircleRun {
     this.level.textContent = this.obstacles.length + 1;
     this.dashCounter.textContent = ">".repeat(this.dashes);
     this.dashCounter.setAttribute("aria-label", `${this.dashes} dashes available`);
+    this.mobileControls?.update(this.paused, this.dashes);
   }
 
   togglePause() {
     this.paused = !this.paused;
     this.pauseStatus.hidden = !this.paused;
+    this.input.clearTouch();
+    this.mobileControls?.update(this.paused, this.dashes);
   }
 
   dash() {
-    if (this.paused || this.activeDash || !this.dashes) return;
+    if (this.paused || this.mobileControls?.portrait.matches || this.activeDash || !this.dashes) return;
     const direction = this.input.direction();
     if (!direction.x && !direction.y) return;
     const { x, y } = this.player;
@@ -548,7 +641,7 @@ class CircleRun {
   }
 
   update(seconds) {
-    if (this.paused) return;
+    if (this.paused || this.mobileControls?.portrait.matches) return;
     const steps = Math.max(1, Math.ceil(seconds * this.player.speed / 2));
     for (let step = 0; step < steps; step++) {
       if (this.advance(seconds / steps)) break;
@@ -630,6 +723,8 @@ class CircleRun {
   };
 }
 
+const mobile = MobileControls.enabled(navigator);
+document.body.classList.toggle("mobile-game", mobile);
 new CircleRun(document.querySelector("canvas"), document.querySelector("#score"),
   document.querySelector("#level"), document.querySelector("#dash"),
-  document.querySelector("#pause"));
+  document.querySelector("#pause"), mobile);
