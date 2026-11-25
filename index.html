@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Circle Run</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="game.js" defer></script>
+</head>
+<body>
+  <header>
+    <dl aria-live="polite">
+      <dt>SCORE</dt><dd id="score">0</dd>
+      <dt>LEVEL</dt><dd id="level">1</dd>
+      <dt>DASH</dt><dd id="dash" aria-label="0 dashes available"></dd>
+    </dl>
+    <p id="instructions">Use the arrow keys to move. Hold two to go diagonally.<br>
+      Reach the GOAL for 1 point. Dodge obstacles and square shots.<br>
+      From level 5, hold a direction and press D to dash through obstacles. Two dashes per attempt.<br>
+      Press P to pause or resume.</p>
+  </header>
+  <main aria-label="Play area">
+    <canvas aria-label="Circle Run" aria-describedby="instructions"></canvas>
+    <p id="pause" role="status" hidden>PAUSED</p>
+  </main>
+</body>
+</html>
