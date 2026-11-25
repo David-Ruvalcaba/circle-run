@@ -73,7 +73,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 
 .mobile-game dd + dt { margin-top: 0; }
 .mobile-game #instructions { display: none; }
-.mobile-game .mobile-only { display: block; }
+.mobile-game .mobile-only:not([hidden]) { display: block; }
 .mobile-game button {
   border: 2px solid black;
   border-radius: 6px;
@@ -118,7 +118,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 .mobile-game #pause h2 { font-size: 1.25rem; }
 #mobile-instructions { max-width: 34rem; font-size: 0.9rem; }
 #mobile-instructions p + p { margin-top: 0.35rem; }
-#resume { margin-top: 0.6rem; min-height: 44px; padding-inline: 1rem; }
+#resume, #reset-game { margin-top: 0.6rem; min-height: 44px; padding-inline: 1rem; }
 
 @media (orientation: portrait) {
   .mobile-game header, .mobile-game main { visibility: hidden; }

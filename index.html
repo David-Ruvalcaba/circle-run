@@ -18,12 +18,12 @@
       Reach the GOAL for 1 point. Dodge obstacles and square shots.<br>
       From level 5, hold a direction and press D to dash through obstacles. Two dashes per attempt.<br>
       Press P to pause or resume.</p>
-    <button id="menu" class="mobile-only" type="button" aria-label="Pause and show instructions"
+    <button id="menu" class="mobile-only" type="button" hidden aria-label="Pause and show instructions"
       aria-expanded="false" aria-controls="pause">☰</button>
   </header>
   <main aria-label="Play area">
     <canvas aria-label="Circle Run" aria-describedby="instructions"></canvas>
-    <div id="touch-controls" class="mobile-only">
+    <div id="touch-controls" class="mobile-only" hidden>
       <div id="direction-pad" role="group" aria-label="Movement">
         <button type="button" data-direction="-1,-1" aria-label="Up left">↖</button>
         <button type="button" data-direction="0,-1" aria-label="Up">↑</button>
@@ -39,11 +39,12 @@
     </div>
     <section id="pause" aria-labelledby="pause-title" hidden>
       <h2 id="pause-title">PAUSED</h2>
-      <div id="mobile-instructions" class="mobile-only">
+      <div id="mobile-instructions" class="mobile-only" hidden>
         <p>Hold an arrow to move. Use the corner arrows to move diagonally.</p>
         <p>Reach the GOAL for 1 point. Dodge obstacles and square shots.</p>
         <p>From level 5, hold an arrow and tap Dash to destroy obstacles in your path. You get two dashes per attempt.</p>
         <button type="button" id="resume">Resume</button>
+        <button type="button" id="reset-game">Reset Game</button>
       </div>
     </section>
   </main>

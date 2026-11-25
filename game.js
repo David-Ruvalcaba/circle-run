@@ -62,9 +62,10 @@ class ArrowInput {
 }
 
 class MobileControls {
-  static enabled(navigator) {
+  static enabled(navigator, touchInput) {
+    if (!touchInput) return false;
     return navigator.userAgentData?.mobile === true ||
-      /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+      /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   }
 
@@ -106,6 +107,10 @@ class MobileControls {
     this.menu.addEventListener("click", () => game.togglePause());
     document.querySelector("#resume").addEventListener("click", () => {
       game.togglePause();
+      this.menu.focus();
+    });
+    document.querySelector("#reset-game").addEventListener("click", () => {
+      game.resetGame();
       this.menu.focus();
     });
     this.portrait.addEventListener("change", () => {
@@ -587,6 +592,15 @@ class CircleRun {
     this.mobileControls?.update(this.paused, this.dashes);
   }
 
+  resetGame() {
+    this.progress = { obstacles: [] };
+    this.store.save(this.progress);
+    this.loadLayout();
+    this.input.pressed.clear();
+    if (this.paused) this.togglePause();
+    this.reset();
+  }
+
   dash() {
     if (this.paused || this.mobileControls?.portrait.matches || this.activeDash || !this.dashes) return;
     const direction = this.input.direction();
@@ -723,8 +737,12 @@ class CircleRun {
   };
 }
 
-const mobile = MobileControls.enabled(navigator);
+const mobile = MobileControls.enabled(navigator,
+  window.matchMedia("(pointer: coarse) and (hover: none)").matches);
 document.body.classList.toggle("mobile-game", mobile);
+if (mobile) {
+  for (const element of document.querySelectorAll(".mobile-only")) element.hidden = false;
+}
 new CircleRun(document.querySelector("canvas"), document.querySelector("#score"),
   document.querySelector("#level"), document.querySelector("#dash"),
   document.querySelector("#pause"), mobile);
